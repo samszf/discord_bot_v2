@@ -14,9 +14,9 @@ COGS = [
     "commands.perfil",
     "commands.xp_eventos",
     "commands.aventura",
-    # "commands.inventario",
-    # "commands.equipar",
-    # "commands.loja",
+    "commands.inventario",
+    "commands.equipar",
+    "commands.loja",
 ]
 
 intents = discord.Intents.default()
