@@ -29,11 +29,26 @@ bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 async def on_ready():
     print(f"✅ Bot online: {bot.user} (ID: {bot.user.id})")
     print(f"📡 Servidores conectados: {len(bot.guilds)}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"🔄 Slash commands sincronizados: {len(synced)}")
-    except Exception as e:
-        print(f"❌ Erro ao sincronizar commands: {e}")
+    for guild in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+            print(f"🔄 Slash commands sincronizados em '{guild.name}': {len(synced)}")
+        except Exception as e:
+            print(f"❌ Erro ao sincronizar em '{guild.name}': {e}")
+
+
+@bot.command(name="sync")
+@commands.is_owner()
+async def sync_commands(ctx: commands.Context):
+    """Força a sincronização de slash commands (apenas dono do bot). Uso: !sync"""
+    for guild in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+            await ctx.send(f"✅ {len(synced)} comando(s) sincronizado(s) em **{guild.name}**.")
+        except Exception as e:
+            await ctx.send(f"❌ Erro em **{guild.name}**: {e}")
 
 
 @bot.event
