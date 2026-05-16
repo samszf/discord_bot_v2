@@ -10,8 +10,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 PREFIX = os.getenv("PREFIX", "!")
 
 COGS = [
-    # "commands.registro",
-    # "commands.perfil",
+    "commands.registro",
+    "commands.perfil",
     # "commands.aventura",
     # "commands.inventario",
     # "commands.equipar",

@@ -68,7 +68,8 @@ def atualizar_player(user_id: int, **campos) -> None:
 def adicionar_xp(user_id: int, xp: int) -> dict:
     """
     Adiciona XP ao jogador e verifica level up.
-    Retorna dict com: xp_atual, nivel_atual, level_up (bool), niveis_ganhos (int).
+    Aplica bonus de stats automaticamente ao subir de nivel.
+    Retorna dict com: xp_atual, nivel_atual, nivel_antes, level_up (bool), niveis_ganhos (int).
     """
     from utils.xp import xp_para_nivel
 
@@ -77,7 +78,8 @@ def adicionar_xp(user_id: int, xp: int) -> dict:
         return {}
 
     novo_xp = player["xp"] + xp
-    nivel_atual = player["nivel"]
+    nivel_antes = player["nivel"]
+    nivel_atual = nivel_antes
     niveis_ganhos = 0
 
     while novo_xp >= xp_para_nivel(nivel_atual + 1):
@@ -87,10 +89,22 @@ def adicionar_xp(user_id: int, xp: int) -> dict:
 
     atualizar_player(user_id, xp=novo_xp, nivel=nivel_atual)
 
+    if niveis_ganhos > 0:
+        bonus_hp     = niveis_ganhos * 10
+        bonus_atk    = niveis_ganhos * 2
+        bonus_defesa = niveis_ganhos * 1
+        atualizar_player(
+            user_id,
+            hp_base=player["hp_base"]         + bonus_hp,
+            atk_base=player["atk_base"]       + bonus_atk,
+            defesa_base=player["defesa_base"] + bonus_defesa,
+        )
+
     return {
-        "xp_atual": novo_xp,
-        "nivel_atual": nivel_atual,
-        "level_up": niveis_ganhos > 0,
+        "xp_atual":      novo_xp,
+        "nivel_atual":   nivel_atual,
+        "nivel_antes":   nivel_antes,
+        "level_up":      niveis_ganhos > 0,
         "niveis_ganhos": niveis_ganhos,
     }
 
