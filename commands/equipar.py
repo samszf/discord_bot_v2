@@ -8,13 +8,8 @@ from discord import app_commands
 
 from database import repository as repo
 from utils.items import buscar_item, nome_item, RARIDADE_EMOJI
-from utils.embeds import embed_erro, embed_sucesso, embed_aviso
-
-SLOT_POR_TIPO = {
-    "arma":      "arma",
-    "armadura":  "armadura",
-    "acessorio": "acessorio",
-}
+from utils.embeds import embed_erro, embed_sucesso, embed_aviso, COR_INFO
+from views.equipar_view import EquiparView
 
 
 class EquiparCog(commands.Cog):
@@ -22,8 +17,7 @@ class EquiparCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="equipar", description="Equipa um item do seu inventário.")
-    @app_commands.describe(item_id="ID do item a equipar (ex: espada_enferrujada)")
-    async def equipar(self, interaction: discord.Interaction, item_id: str):
+    async def equipar(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
         user_id = interaction.user.id
@@ -34,71 +28,41 @@ class EquiparCog(commands.Cog):
             )
             return
 
-        # verifica se o item existe no catálogo
-        item = buscar_item(item_id)
-        if not item:
-            await interaction.followup.send(
-                embed=embed_erro("❌ Item inválido", f"O item `{item_id}` não existe.")
-            )
-            return
+        inventario = repo.buscar_inventario(user_id)
 
-        # verifica se o item é equipável
-        slot = SLOT_POR_TIPO.get(item["tipo"])
-        if not slot:
+        # filtra apenas itens equipáveis
+        equipaveis = [
+            e for e in inventario
+            if (buscar_item(e["item_id"]) or {}).get("tipo") in ("arma", "armadura", "acessorio")
+        ]
+
+        if not equipaveis:
             await interaction.followup.send(
                 embed=embed_aviso(
-                    "⚠️ Item não equipável",
-                    f"**{item['nome']}** é um **{item['tipo']}** e não pode ser equipado diretamente.\n"
-                    f"Consumíveis podem ser usados em batalha."
+                    "🎒 Inventário vazio",
+                    "Você não possui nenhum item equipável.\n"
+                    "Aventure-se ou compre itens na `/loja`!"
                 )
             )
             return
 
-        # verifica se o jogador tem o item no inventário
-        inventario = repo.buscar_inventario(user_id)
-        tem_item = any(e["item_id"] == item_id for e in inventario)
-        if not tem_item:
-            await interaction.followup.send(
-                embed=embed_erro(
-                    "❌ Item não encontrado",
-                    f"Você não possui **{item['nome']}** no inventário."
-                )
-            )
-            return
+        view = EquiparView(equipaveis, user_id)
 
-        # verifica o que está equipado no slot atualmente
-        equipment = repo.buscar_equipment(user_id)
-        item_atual_id = equipment.get(slot)
-        item_atual = buscar_item(item_atual_id) if item_atual_id else None
-
-        # equipa o novo item
-        repo.atualizar_equipment(user_id, slot, item_id)
-
-        raridade = item.get("raridade", "comum")
-        emoji = RARIDADE_EMOJI.get(raridade, "⚪")
-
-        # monta stats do item
-        stats = []
-        if item.get("atk"):    stats.append(f"⚔️ +{item['atk']} ATK")
-        if item.get("defesa"): stats.append(f"🛡️ +{item['defesa']} DEF")
-        if item.get("hp"):     stats.append(f"❤️ +{item['hp']} HP")
-        stats_txt = "  ".join(stats) if stats else "Sem bônus de stat"
-
-        descricao = f"{emoji} **{item['nome']}** equipado no slot **{slot}**!\n\n{stats_txt}"
-
-        if item_atual:
-            descricao += f"\n\n*Substituiu: {item_atual['nome']}*"
-
-        await interaction.followup.send(
-            embed=embed_sucesso("✅ Item equipado!", descricao)
+        embed = discord.Embed(
+            title="⚙️ Equipar Item",
+            description="Selecione um item do menu abaixo para equipar.",
+            color=COR_INFO
         )
+        embed.set_footer(text="RPG Bot V2 • Menu expira em 60s")
+
+        await interaction.followup.send(embed=embed, view=view)
 
     @app_commands.command(name="desequipar", description="Remove um item equipado.")
     @app_commands.describe(slot="Slot a desequipar")
     @app_commands.choices(slot=[
-        app_commands.Choice(name="🗡️ Arma",      value="arma"),
-        app_commands.Choice(name="🧥 Armadura",   value="armadura"),
-        app_commands.Choice(name="📿 Acessório",  value="acessorio"),
+        app_commands.Choice(name="🗡️ Arma",     value="arma"),
+        app_commands.Choice(name="🧥 Armadura",  value="armadura"),
+        app_commands.Choice(name="📿 Acessório", value="acessorio"),
     ])
     async def desequipar(self, interaction: discord.Interaction, slot: str):
         await interaction.response.defer(ephemeral=True)
@@ -116,11 +80,11 @@ class EquiparCog(commands.Cog):
 
         if not item_atual_id:
             await interaction.followup.send(
-                embed=embed_aviso("⚠️ Slot vazio", f"Você não tem nada equipado no slot **{slot}**.")
+                embed=embed_aviso("⚠️ Slot vazio",
+                                  f"Você não tem nada equipado no slot **{slot}**.")
             )
             return
 
-        item_atual = buscar_item(item_atual_id)
         repo.atualizar_equipment(user_id, slot, None)
 
         await interaction.followup.send(
