@@ -6,9 +6,11 @@ xp.py — Fórmulas de progressão de XP e nível.
 def xp_para_nivel(nivel: int) -> int:
     """
     Retorna o XP necessário para atingir o nível informado.
-    Fórmula: 100 * (nivel ^ 1.5)
+    Fórmula: 120 * (nivel ^ 1.8)
+    Mais íngreme que a anterior — nível 10 exige ~2x mais esforço,
+    mas os primeiros níveis ainda são rápidos para engajar o jogador.
     """
-    return int(100 * (nivel ** 1.5))
+    return int(120 * (nivel ** 1.8))
 
 
 def xp_total_para_nivel(nivel: int) -> int:

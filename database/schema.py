@@ -45,4 +45,12 @@ CREATE TABLE IF NOT EXISTS battle_stats (
     FOREIGN KEY (user_id) REFERENCES players(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS habilidades_cooldown (
+    user_id       INTEGER NOT NULL,
+    habilidade_id TEXT    NOT NULL,
+    ultimo_uso    TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, habilidade_id),
+    FOREIGN KEY (user_id) REFERENCES players(user_id)
+);
+
 """

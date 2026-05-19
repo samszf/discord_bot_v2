@@ -3,32 +3,32 @@
 *.env
 .env.*
 !.env.example
- 
+
 # ── Banco de dados ────────────────────────────────────────
 data/
 *.db
 *.sqlite
 *.sqlite3
- 
+
 # ── Python ────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 .Python
- 
+
 # ── Ambientes virtuais ────────────────────────────────────
 venv/
 .venv/
 env/
 ENV/
- 
+
 # ── Testes e cobertura ────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
- 
+
 # ── IDEs e editores ───────────────────────────────────────
 .vscode/
 .idea/
@@ -36,7 +36,10 @@ coverage.xml
 *.swo
 .DS_Store
 Thumbs.db
- 
+
 # ── Logs ─────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Assets gerados (manter apenas os originais) ───────────
+assets/cache/

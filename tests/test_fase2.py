@@ -43,8 +43,10 @@ def test_registrar_cria_equipment_e_stats():
 # ── XP E LEVEL UP ──────────────────────────────────────────
 
 def test_xp_para_nivel():
-    assert xp_para_nivel(1) == 100
+    # fórmula atual: 120 × n^1.8
     assert xp_para_nivel(2) > xp_para_nivel(1)
+    assert xp_para_nivel(3) > xp_para_nivel(2)
+    assert xp_para_nivel(10) > xp_para_nivel(5)
     print("✅ xp_para_nivel crescente")
 
 def test_calcular_nivel():

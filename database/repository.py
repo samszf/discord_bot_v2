@@ -90,9 +90,11 @@ def adicionar_xp(user_id: int, xp: int) -> dict:
     atualizar_player(user_id, xp=novo_xp, nivel=nivel_atual)
 
     if niveis_ganhos > 0:
-        bonus_hp     = niveis_ganhos * 10
-        bonus_atk    = niveis_ganhos * 2
-        bonus_defesa = niveis_ganhos * 1
+        from utils.classes import bonus_por_nivel
+        cresc = bonus_por_nivel(player["classe"]) if player["classe"] else {"hp": 10, "atk": 2, "defesa": 1}
+        bonus_hp     = niveis_ganhos * cresc["hp"]
+        bonus_atk    = niveis_ganhos * cresc["atk"]
+        bonus_defesa = niveis_ganhos * cresc["defesa"]
         atualizar_player(
             user_id,
             hp_base=player["hp_base"]         + bonus_hp,
@@ -290,3 +292,59 @@ def buscar_battle_stats(user_id: int) -> dict | None:
             "SELECT * FROM battle_stats WHERE user_id = ?", (user_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+# ─────────────────────────────────────────
+# CLASSE
+# ─────────────────────────────────────────
+
+def definir_classe(user_id: int, classe: str) -> bool:
+    """
+    Define a classe do jogador. Só permite se ainda não tiver classe.
+    Retorna True se definiu, False se já tinha classe.
+    """
+    player = buscar_player(user_id)
+    if not player or player["classe"] is not None:
+        return False
+
+    from utils.classes import CLASSES
+    dados = CLASSES.get(classe)
+    if not dados:
+        return False
+
+    # aplica stats iniciais da classe
+    atualizar_player(
+        user_id,
+        classe=classe,
+        hp_base=player["hp_base"]         + dados["bonus_hp_inicial"],
+        atk_base=player["atk_base"]       + dados["bonus_atk_inicial"],
+        defesa_base=player["defesa_base"] + dados["bonus_defesa_inicial"],
+    )
+    return True
+
+
+# ─────────────────────────────────────────
+# HABILIDADES COOLDOWN
+# ─────────────────────────────────────────
+
+def buscar_cooldown_habilidade(user_id: int, habilidade_id: str) -> str | None:
+    """Retorna o timestamp do último uso da habilidade ou None."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT ultimo_uso FROM habilidades_cooldown WHERE user_id = ? AND habilidade_id = ?",
+            (user_id, habilidade_id)
+        ).fetchone()
+        return row["ultimo_uso"] if row else None
+
+
+def registrar_cooldown_habilidade(user_id: int, habilidade_id: str) -> None:
+    """Registra ou atualiza o uso de uma habilidade."""
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO habilidades_cooldown (user_id, habilidade_id, ultimo_uso)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, habilidade_id) DO UPDATE SET ultimo_uso = CURRENT_TIMESTAMP
+            """,
+            (user_id, habilidade_id)
+        )

@@ -22,13 +22,17 @@ def iniciar_combate(user_id: int, slime: dict) -> dict:
     Monta o estado inicial do combate.
     Retorna o estado completo que será mantido na View.
     """
+    from utils.classes import CLASSES
     stats = buscar_stats_completos(user_id)
+    classe = stats.get("classe")
+    classe_emoji = CLASSES[classe]["emoji"] if classe and classe in CLASSES else "🧙"
 
     return {
         "user_id":      user_id,
         "turno":        1,
         "finalizado":   False,
         "vitoria":      False,
+        "buffs":        {},
 
         # jogador
         "jogador_hp":       stats["hp_total"],
@@ -37,10 +41,15 @@ def iniciar_combate(user_id: int, slime: dict) -> dict:
         "jogador_defesa":   stats["defesa_total"],
         "dano_total":       0,
 
+        # classe
+        "classe":       classe,
+        "classe_emoji": classe_emoji,
+        "nivel":        stats["nivel"],
+
         # slime
-        "slime":            slime,
-        "slime_hp":         slime["hp_atual"],
-        "slime_hp_max":     slime["hp_max"],
+        "slime":        slime,
+        "slime_hp":     slime["hp_atual"],
+        "slime_hp_max": slime["hp_max"],
 
         # log do último turno
         "log": [f"Um **{slime['emoji']} {slime['nome']}** apareceu!"],
@@ -130,3 +139,32 @@ def barra_hp(hp_atual: int, hp_max: int, tamanho: int = 10) -> str:
     preenchido = int((hp_atual / hp_max) * tamanho)
     preenchido = max(0, min(preenchido, tamanho))
     return "❤️" * preenchido + "🖤" * (tamanho - preenchido)
+
+
+def _calcular_dano_jogador(estado: dict, penalidade_def: float = 1.0) -> int:
+    """
+    Helper usado pelas habilidades para calcular dano do jogador.
+    penalidade_def reduz a defesa do inimigo considerada (ex: 0.5 = ignora metade).
+    """
+    critico = random.randint(1, 100) <= CHANCE_CRITICO
+    buffs = estado.get("buffs", {})
+
+    # chance extra de crítico por buffs
+    bonus_critico = sum(b.get("bonus_critico", 0) for b in buffs.values())
+    if bonus_critico:
+        critico = random.randint(1, 100) <= (CHANCE_CRITICO + bonus_critico)
+
+    # crítico garantido por buff
+    if any(b.get("critico") for b in buffs.values()):
+        critico = True
+
+    defesa_considerada = int(estado["slime"]["defesa"] * penalidade_def)
+    dano_base = max(1, estado["jogador_atk"] - defesa_considerada)
+    dano = int(dano_base * MULT_CRITICO) if critico else dano_base
+    dano = max(1, dano + random.randint(-1, 2))
+
+    # dano fixo extra por buffs (ex: marca do caçador)
+    bonus_fixo = sum(b.get("bonus_dano_fixo", 0) for b in buffs.values())
+    dano += bonus_fixo
+
+    return dano

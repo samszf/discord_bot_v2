@@ -7,7 +7,7 @@ from database import repository as repo
 
 
 COOLDOWNS_SEGUNDOS = {
-    "aventura": 30,
+    "aventura": 180,  # 3 minutos
 }
 
 

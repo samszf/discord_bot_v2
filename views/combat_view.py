@@ -4,6 +4,8 @@ combat_view.py — Botões interativos do combate por turnos.
 
 import discord
 from utils.combat import processar_turno_ataque, processar_fuga, barra_hp
+from utils.habilidades import HABILIDADES, executar_habilidade
+from utils.classes import habilidades_disponiveis
 from utils.loot import sortear_loot, sortear_ouro
 from utils.items import nome_item, RARIDADE_EMOJI, buscar_item
 from utils.levelup import notificar_levelup
@@ -11,7 +13,6 @@ from database import repository as repo
 
 
 def build_embed_combate(estado: dict) -> discord.Embed:
-    """Monta o embed do estado atual do combate."""
     slime = estado["slime"]
     cor = 0xE74C3C if estado["jogador_hp"] < estado["jogador_hp_max"] * 0.3 else 0x3498DB
 
@@ -20,7 +21,6 @@ def build_embed_combate(estado: dict) -> discord.Embed:
         color=cor
     )
 
-    # HP do slime
     barra_s = barra_hp(estado["slime_hp"], estado["slime_hp_max"])
     embed.add_field(
         name=f"{slime['emoji']} {slime['nome']}",
@@ -28,15 +28,30 @@ def build_embed_combate(estado: dict) -> discord.Embed:
         inline=True
     )
 
-    # HP do jogador
     barra_j = barra_hp(estado["jogador_hp"], estado["jogador_hp_max"])
+
+    # mostra classe no nome do jogador se tiver
+    classe = estado.get("classe")
+    classe_txt = f" [{estado['classe_emoji']} {classe}]" if classe else ""
     embed.add_field(
-        name="🧙 Você",
+        name=f"🧙 Você{classe_txt}",
         value=f"{barra_j}\n`{estado['jogador_hp']}/{estado['jogador_hp_max']} HP`",
         inline=True
     )
 
-    # log do último turno
+    # buffs ativos
+    buffs = estado.get("buffs", {})
+    if buffs:
+        nomes_buffs = []
+        for k, v in buffs.items():
+            turnos = v.get("turnos", 0)
+            nomes_buffs.append(f"`{k}` ({turnos}t)")
+        embed.add_field(
+            name="✨ Buffs ativos",
+            value="  ".join(nomes_buffs),
+            inline=False
+        )
+
     if estado["log"]:
         embed.add_field(
             name="📜 Último turno",
@@ -48,8 +63,8 @@ def build_embed_combate(estado: dict) -> discord.Embed:
     return embed
 
 
-def build_embed_resultado(estado: dict, xp_ganho: int, ouro_ganho: int, item_drop: str | None) -> discord.Embed:
-    """Monta o embed de resultado final do combate."""
+def build_embed_resultado(estado: dict, xp_ganho: int,
+                          ouro_ganho: int, item_drop: str | None) -> discord.Embed:
     if estado["vitoria"]:
         embed = discord.Embed(
             title="🏆 Vitória!",
@@ -71,7 +86,6 @@ def build_embed_resultado(estado: dict, xp_ganho: int, ouro_ganho: int, item_dro
             )
         else:
             embed.add_field(name="🎁 Loot", value="*Nenhum item dropou.*", inline=False)
-
     else:
         embed = discord.Embed(
             title="💀 Derrota!",
@@ -91,19 +105,32 @@ class CombateView(discord.ui.View):
         self.estado = estado
         self.interaction_original = interaction_original
         self.finalizado = False
+        # cooldowns de habilidades: {hab_id: turnos_restantes}
+        self._cooldowns: dict[str, int] = {}
+        # atualiza botão de habilidade baseado na classe
+        self._atualizar_botao_habilidade()
+
+    def _atualizar_botao_habilidade(self):
+        """Habilita ou desabilita o botão de habilidade conforme a classe."""
+        tem_classe = bool(self.estado.get("classe"))
+        self.habilidade.disabled = not tem_classe
+
+    def _cooldowns_ativos(self) -> set:
+        return {hab_id for hab_id, t in self._cooldowns.items() if t > 0}
+
+    def _decrementar_cooldowns(self):
+        for hab_id in list(self._cooldowns):
+            self._cooldowns[hab_id] = max(0, self._cooldowns[hab_id] - 1)
 
     async def _atualizar_embed(self, interaction: discord.Interaction):
-        """Atualiza o embed do combate após cada ação."""
         embed = build_embed_combate(self.estado)
-
         if self.estado["finalizado"]:
             await self._finalizar_combate(interaction)
             return
-
+        self._decrementar_cooldowns()
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def _finalizar_combate(self, interaction: discord.Interaction):
-        """Processa o fim do combate: loot, XP, banco e embed final."""
         self.finalizado = True
         self.clear_items()
 
@@ -112,12 +139,10 @@ class CombateView(discord.ui.View):
         vitoria = estado["vitoria"]
         slime = estado["slime"]
 
-        # ── Recompensas ───────────────────────────────────
-        xp_ganho = slime["xp_recompensa"] if vitoria else 5
-        ouro_ganho = sortear_ouro(slime["ouro_min"], slime["ouro_max"]) if vitoria else 0
-        item_drop = sortear_loot(slime["raridades"]) if vitoria else None
+        xp_ganho    = slime["xp_recompensa"] if vitoria else 5
+        ouro_ganho  = sortear_ouro(slime["ouro_min"], slime["ouro_max"]) if vitoria else 0
+        item_drop   = sortear_loot(slime["raridades"]) if vitoria else None
 
-        # ── Salva no banco ────────────────────────────────
         resultado_xp = repo.adicionar_xp(user_id, xp_ganho)
         if ouro_ganho > 0:
             repo.adicionar_ouro(user_id, ouro_ganho)
@@ -131,11 +156,9 @@ class CombateView(discord.ui.View):
             slimes_derrotados=1 if vitoria else 0,
         )
 
-        # ── Embed de resultado ────────────────────────────
         embed = build_embed_resultado(estado, xp_ganho, ouro_ganho, item_drop)
         await interaction.response.edit_message(embed=embed, view=self)
 
-        # ── Notifica level up se houver ───────────────────
         if resultado_xp.get("level_up"):
             await notificar_levelup(
                 canal=interaction,
@@ -145,7 +168,6 @@ class CombateView(discord.ui.View):
             )
 
     async def on_timeout(self):
-        """Desativa os botões se o combate expirar."""
         self.clear_items()
         try:
             embed = build_embed_combate(self.estado)
@@ -163,9 +185,59 @@ class CombateView(discord.ui.View):
             return
         if self.finalizado:
             return
-
         self.estado = processar_turno_ataque(self.estado)
         await self._atualizar_embed(interaction)
+
+    @discord.ui.button(label="✨ Habilidade", style=discord.ButtonStyle.primary)
+    async def habilidade(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.estado["user_id"]:
+            await interaction.response.send_message("❌ Este não é o seu combate!", ephemeral=True)
+            return
+        if self.finalizado:
+            return
+
+        from views.habilidade_view import HabilidadeView
+
+        classe = self.estado.get("classe")
+        nivel  = self.estado.get("nivel", 1)
+
+        view = HabilidadeView(
+            classe=classe,
+            nivel=nivel,
+            user_id=self.estado["user_id"],
+            cooldowns_ativos=self._cooldowns_ativos(),
+            callback_fn=self._usar_habilidade,
+        )
+        await interaction.response.send_message(
+            "✨ Escolha sua habilidade:", view=view, ephemeral=True
+        )
+
+    async def _usar_habilidade(self, interaction: discord.Interaction, hab_id: str):
+        """Callback chamado pelo HabilidadeView ao selecionar uma habilidade."""
+        if hab_id in self._cooldowns_ativos():
+            await interaction.response.send_message(
+                "⏳ Esta habilidade está em cooldown!", ephemeral=True
+            )
+            return
+
+        hab = HABILIDADES.get(hab_id)
+        if not hab:
+            return
+
+        self.estado = executar_habilidade(hab_id, self.estado)
+
+        # registra cooldown
+        self._cooldowns[hab_id] = hab["cooldown_turnos"]
+
+        # atualiza a mensagem principal do combate
+        embed = build_embed_combate(self.estado)
+        if self.estado["finalizado"]:
+            await self._finalizar_combate(interaction)
+        else:
+            self._decrementar_cooldowns()
+            await interaction.response.edit_message(
+                content=None, embed=embed, view=self
+            )
 
     @discord.ui.button(label="🏃 Fugir", style=discord.ButtonStyle.secondary)
     async def fugir(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -174,6 +246,5 @@ class CombateView(discord.ui.View):
             return
         if self.finalizado:
             return
-
         self.estado = processar_fuga(self.estado)
         await self._atualizar_embed(interaction)

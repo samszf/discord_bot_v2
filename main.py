@@ -11,6 +11,7 @@ PREFIX = os.getenv("PREFIX", "!")
 
 COGS = [
     "commands.registro",
+    "commands.admin",
     "commands.perfil",
     "commands.xp_eventos",
     "commands.aventura",

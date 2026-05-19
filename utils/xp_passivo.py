@@ -7,10 +7,10 @@ XP de voz:    fixo a cada intervalo, só com mais alguém no canal.
 
 # ── Configurações ─────────────────────────────────────────
 
-XP_POR_MENSAGEM       = 2      # XP ganho por mensagem de texto
+XP_POR_MENSAGEM       = 3      # XP ganho por mensagem de texto
 COOLDOWN_MENSAGEM_SEG = 60     # segundos entre ganhos de XP por texto
 
-XP_POR_TICK_VOZ       = 5      # XP ganho por tick em voz
+XP_POR_TICK_VOZ       = 8      # XP ganho por tick em voz
 INTERVALO_VOZ_SEG     = 300    # segundos entre ticks de voz (5 min)
 VOZ_MIN_MEMBROS       = 2      # mínimo de membros para XP contar
 
