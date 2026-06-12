@@ -13,6 +13,7 @@ from database import repository as repo
 
 
 def build_embed_combate(estado: dict) -> discord.Embed:
+    from assets.config import get_slime
     slime = estado["slime"]
     cor = 0xE74C3C if estado["jogador_hp"] < estado["jogador_hp_max"] * 0.3 else 0x3498DB
 
@@ -20,6 +21,9 @@ def build_embed_combate(estado: dict) -> discord.Embed:
         title=f"{slime['emoji']} {slime['nome']} — Turno {estado['turno']}",
         color=cor
     )
+    img = get_slime(slime.get("dificuldade"))
+    if img:
+        embed.set_thumbnail(url=img)
 
     barra_s = barra_hp(estado["slime_hp"], estado["slime_hp_max"])
     embed.add_field(
