@@ -32,18 +32,34 @@ class RegistroCog(commands.Cog):
             return
 
         # pede para escolher a classe
+        # divide as 13 classes em dois campos para não ultrapassar o limite do embed
+        classes_lista = list(CLASSES.items())
+        metade = len(classes_lista) // 2 + len(classes_lista) % 2
+
         embed_escolha = discord.Embed(
             title="⚔️ Bem-vindo ao RPG!",
             description=(
                 f"Olá, **{interaction.user.display_name}**!\n\n"
                 "Antes de começar, escolha sua **classe** abaixo.\n"
-                "Esta escolha é **permanente** — pense bem!\n\n"
-                + "\n".join(
-                    f"{d['emoji']} **{nome}** — {d['role']}"
-                    for nome, d in CLASSES.items()
-                )
+                "Esta escolha é **permanente** — pense bem!"
             ),
             color=0x9B59B6,
+        )
+        embed_escolha.add_field(
+            name="Classes",
+            value="\n".join(
+                f"{d['emoji']} **{nome}** — {d['role']}"
+                for nome, d in classes_lista[:metade]
+            ),
+            inline=True,
+        )
+        embed_escolha.add_field(
+            name="\u200b",
+            value="\n".join(
+                f"{d['emoji']} **{nome}** — {d['role']}"
+                for nome, d in classes_lista[metade:]
+            ),
+            inline=True,
         )
         embed_escolha.set_thumbnail(url=interaction.user.display_avatar.url)
         embed_escolha.set_footer(text="RPG Bot V2 • Menu expira em 60s")

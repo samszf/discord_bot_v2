@@ -30,14 +30,14 @@ BANNER_GERAL = None
 # assets/slimes/slime_7.png → Cubo Gelatinoso Supremo
 
 SLIMES = {
-    1: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_1.png",
-    2: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_2.png",
-    3: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_3.png",
-    4: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_4.png",
-    5: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_5.png",
-    6: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_6.png",
-    7: "https://raw.githubusercontent.com/samszf/discord_bot_v2/refs/heads/main/assets/slimes/slime_7.png",
-}  
+    1: None,
+    2: None,
+    3: None,
+    4: None,
+    5: None,
+    6: None,
+    7: None,
+}
 
 
 # ── RESULTADOS DE BATALHA ─────────────────────────────────

@@ -210,7 +210,7 @@ def test_estado_tem_classe_e_nivel():
     estado = _estado_guerreiro()
     assert estado["classe"] == "Guerreiro"
     assert estado["nivel"] >= 1
-    assert estado["classe_emoji"] == "⚔️"
+    assert "⚔" in estado["classe_emoji"]  # sem variation selector
     print("✅ estado do combate inclui classe e nível")
 
 def test_level_up_usa_crescimento_da_classe():
